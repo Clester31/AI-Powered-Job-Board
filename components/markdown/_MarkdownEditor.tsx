@@ -1,3 +1,5 @@
+"use client"
+
 import { useIsDarkMode } from "@/hooks/useIsDarkMode";
 import { cn } from "@/lib/utils";
 import { BlockTypeSelect, BoldItalicUnderlineToggles, headingsPlugin, InsertTable, InsertThematicBreak, listsPlugin, ListsToggle, markdownShortcutPlugin, MDXEditor, MDXEditorMethods, MDXEditorProps, quotePlugin, tablePlugin, thematicBreakPlugin, toolbarPlugin } from "@mdxeditor/editor";
