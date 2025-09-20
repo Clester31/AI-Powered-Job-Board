@@ -7,19 +7,19 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { SignedIn,  } from "@/services/clerk/components/SignInStatus";
-import { AppSidebarClient } from "@/components/sidebar/_AppSidebarClient";
-import { ReactNode } from "react";
+} from "@/components/ui/sidebar"
+import { SignedIn } from "@/services/clerk/components/SignInStatus"
+import { AppSidebarClient } from "./_AppSidebarClient"
+import { ReactNode } from "react"
 
-export default function AppSidebar({
+export function AppSidebar({
   children,
   content,
   footerButton,
 }: {
-  children: ReactNode;
-  content: ReactNode;
-  footerButton: ReactNode;
+  children: ReactNode
+  content: ReactNode
+  footerButton: ReactNode
 }) {
   return (
     <SidebarProvider className="overflow-y-hidden">
@@ -41,5 +41,5 @@ export default function AppSidebar({
         <main className="flex-1">{children}</main>
       </AppSidebarClient>
     </SidebarProvider>
-  );
+  )
 }

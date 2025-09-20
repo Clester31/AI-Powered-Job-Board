@@ -1,5 +1,13 @@
-export default function HomePage() {
-    return (
-        <div>hi</div>
-    )
+import { JobListingItems } from "./_shared/JobListingsItems"
+
+export default function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[]>>
+}) {
+  return (
+    <div className="m-4">
+      <JobListingItems searchParams={searchParams} />
+    </div>
+  )
 }

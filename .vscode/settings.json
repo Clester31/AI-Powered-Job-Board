@@ -1,8 +1,10 @@
 {
     "cSpell.words": [
         "delisted",
+        "ilike",
         "inngest",
         "planfeature",
         "Retriable"
-    ]
+    ],
+    "search.useIgnoreFiles": false
 }
