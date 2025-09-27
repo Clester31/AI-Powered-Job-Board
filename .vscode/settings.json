@@ -4,7 +4,9 @@
         "ilike",
         "inngest",
         "planfeature",
-        "Retriable"
+        "Retriable",
+        "uploadthing",
+        "UTSSR"
     ],
     "search.useIgnoreFiles": false
 }

@@ -1,7 +1,10 @@
 "use server";
 
-import { getCurrentOrganization } from "@/services/clerk/lib/getCurrentAuth";
-import { jobListingSchema } from "./schemas";
+import {
+  getCurrentOrganization,
+  getCurrentUser,
+} from "@/services/clerk/lib/getCurrentAuth";
+import { jobListingAiSearchSchema, jobListingSchema } from "./schemas";
 import z from "zod";
 import { redirect } from "next/navigation";
 import {
@@ -10,13 +13,20 @@ import {
   updateJobListing as updateJobListingDb,
 } from "../db/jobListing";
 import { cacheTag } from "next/dist/server/use-cache/cache-tag";
-import { getJobListingsIdTag } from "../db/cache/jobListings";
+import {
+  getJobListingsGlobalTag,
+  getJobListingsIdTag,
+} from "../db/cache/jobListings";
 import { db } from "@/drizzle/db";
 import { and, eq } from "drizzle-orm";
 import { JobListingTable } from "@/drizzle/schema";
 import { hasOrgUserPermission } from "@/services/clerk/lib/orgUserPermissions";
 import { getNextJobListingStatus } from "../lib/utils";
-import { hasReachedMaxFeaturedJobListings, hasReachedMaxPublishedJobListings } from "../lib/planfeatureHelpers";
+import {
+  hasReachedMaxFeaturedJobListings,
+  hasReachedMaxPublishedJobListings,
+} from "../lib/planfeatureHelpers";
+import { getMatchingJobListings } from "@/services/inngest/ai/getMatchingJobListings";
 
 export async function createJobListing(
   unsafeData: z.infer<typeof jobListingSchema>
@@ -116,7 +126,7 @@ export async function toggleJobListingStatus(id: string) {
         : undefined,
   });
 
-  return { error: false }
+  return { error: false };
 }
 
 export async function toggleJobListingFeatured(id: string) {
@@ -124,26 +134,26 @@ export async function toggleJobListingFeatured(id: string) {
     error: true,
     message:
       "You don't have permission to update this job listing's featured status",
-  }
-  const { orgId } = await getCurrentOrganization()
-  if (orgId == null) return error
+  };
+  const { orgId } = await getCurrentOrganization();
+  if (orgId == null) return error;
 
-  const jobListing = await getJobListing(id, orgId)
-  if (jobListing == null) return error
+  const jobListing = await getJobListing(id, orgId);
+  if (jobListing == null) return error;
 
-  const newFeaturedStatus = !jobListing.isFeatured
+  const newFeaturedStatus = !jobListing.isFeatured;
   if (
     !(await hasOrgUserPermission("org:job_listings:change_status")) ||
     (newFeaturedStatus && (await hasReachedMaxFeaturedJobListings()))
   ) {
-    return error
+    return error;
   }
 
   await updateJobListingDb(id, {
     isFeatured: newFeaturedStatus,
-  })
+  });
 
-  return { error: false }
+  return { error: false };
 }
 
 export async function deleteJobListing(id: string) {
@@ -151,20 +161,61 @@ export async function deleteJobListing(id: string) {
     error: true,
     message:
       "You don't have permission to delete this job listing's featured status",
+  };
+  const { orgId } = await getCurrentOrganization();
+  if (orgId == null) return error;
+
+  const jobListing = await getJobListing(id, orgId);
+  if (jobListing == null) return error;
+
+  if (await hasOrgUserPermission("org:job_listings:delete")) {
+    return error;
   }
-  const { orgId } = await getCurrentOrganization()
-  if (orgId == null) return error
 
-  const jobListing = await getJobListing(id, orgId)
-  if (jobListing == null) return error
+  await deleteJobListingDb(id);
 
-  if(await hasOrgUserPermission("org:job_listings:delete")) {
-    return error
+  redirect("/employer");
+}
+
+export async function getAiJobListingSearchResults(
+  unsafe: z.infer<typeof jobListingAiSearchSchema>
+): Promise<
+  { error: true; message: string } | { error: false; jobIds: string[] }
+> {
+  const { success, data } = jobListingAiSearchSchema.safeParse(unsafe);
+
+  if (!success) {
+    return {
+      error: true,
+      message: "There was an error processing your search query",
+    };
   }
 
-  await deleteJobListingDb(id)
+  const { userId } = await getCurrentUser();
+  if (userId == null) {
+    return {
+      error: true,
+      message: "You need an account to use AI job search",
+    };
+  }
 
-  redirect("/employer")
+  const allListings = await getPublicJobListings();
+  const matchedListings = await getMatchingJobListings(
+    data.query,
+    allListings,
+    {
+      maxNumberOfJobs: 10,
+    }
+  );
+
+  if (matchedListings.length === 0) {
+    return {
+      error: true,
+      message: "No jobs match your search criteria",
+    };
+  }
+
+  return { error: false, jobIds: matchedListings };
 }
 
 async function getJobListing(id: string, orgId: string) {
@@ -176,5 +227,14 @@ async function getJobListing(id: string, orgId: string) {
       eq(JobListingTable.id, id),
       eq(JobListingTable.organizationId, orgId)
     ),
+  });
+}
+
+async function getPublicJobListings() {
+  "use cache";
+  cacheTag(getJobListingsGlobalTag());
+
+  return db.query.JobListingTable.findMany({
+    where: eq(JobListingTable.status, "published"),
   });
 }
