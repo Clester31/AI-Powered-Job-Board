@@ -7,6 +7,7 @@ type UserPermission =
     | "org:job_listings:change_status"
     | "org:job_listing_applications:change_rating"
     | "org:job_listing_applications:change_status"
+    | "org:job_listing_applications:change_stage"
 
 export async function hasOrgUserPermission(permission: UserPermission) {
     const { has } = await auth()
